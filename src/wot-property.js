@@ -90,7 +90,8 @@ module.exports = function(RED) {
 
         RED.nodes.getNode(config.thing).consumedThing.then((consumedThing) => {
             node.on('input', function(msg) {
-                consumedThing.properties[config.property].write(msg.payload)
+                //consumedThing.properties[config.property].write(msg.payload)
+                consumedThing.writeProperty(config.property, msg.payload)
                 .then((resp) => {
                     if (resp) node.send({payload: resp, topic: config.topic})
                     node.status({

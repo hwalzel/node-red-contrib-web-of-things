@@ -15,7 +15,7 @@ module.exports = function(RED) {
 
         this.on('input', function(msg) {
             RED.nodes.getNode(config.thing).consumedThing.then((consumedThing) => {
-                consumedThing.actions[config.action].invoke(msg.payload)
+                consumedThing.invokeAction(config.action, msg.payload) //  actions[config.action].invoke(msg.payload)
                     .then((resp) => {
                         if (resp) node.send({payload: resp, topic: config.topic})
                         node.status({

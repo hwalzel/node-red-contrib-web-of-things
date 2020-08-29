@@ -18,8 +18,9 @@ module.exports = function(RED) {
 
         
         RED.nodes.getNode(config.thing).consumedThing.then((consumedThing) => {
-            node.subscription = consumedThing.events[config.event].subscribe(
+            node.subscription = consumedThing.subscribeEvent(config.event, 
                 (resp) => {
+                    // TODO: if resp is a boolean and "false", then no message is sent. Fix this begaviour!
                     if (resp) node.send({payload: resp, topic: config.topic})
                     node.status({
                         fill:"green",

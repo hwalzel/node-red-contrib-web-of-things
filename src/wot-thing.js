@@ -1,4 +1,7 @@
 "use strict"
+
+const { Helpers } = require("@node-wot/core");
+
 const Servient = require("@node-wot/core").Servient;
 const HttpClientFactory = require("@node-wot/binding-http").HttpClientFactory;
 const HttpsClientFactory = require("@node-wot/binding-http").HttpsClientFactory;
@@ -13,7 +16,7 @@ module.exports = function(RED) {
         this.tdLink = config.tdLink;
         this.td = config.td;
 
-        this.consumedThing = new Promise((resolve, reject) => {
+        this.consumedThing = new Promise( (resolve, reject) => {
             let servient = new Servient();
 
             if (config.http) {
@@ -29,9 +32,9 @@ module.exports = function(RED) {
             }
 
             servient.start().then((thingFactory) => {
-                let consumedThing = thingFactory.consume(this.td);
+                let consumedThing = thingFactory.consume(JSON.parse(this.td));
                 resolve(consumedThing);
-            })
+            }).catch((err) => {console.log("error: ", err)});
         })
     }
     RED.nodes.registerType("consumed-thing",consumedThingNode);

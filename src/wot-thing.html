@@ -3,7 +3,8 @@
         category: "config",
         defaults: {
             tdLink: {value: "", required: false},
-            td: {value: "", required: false},  //TODO: add validator to make sure that at least one is given
+            td: {value: "", required: false, validate: RED.validators.typedInput("tdType")},  //TODO: add validator to make sure that at least one is given
+            tdType: {value: "json"},
             http: {value: true},
             coap: {value: false},
             mqtt: {value: false}
@@ -27,7 +28,12 @@
                     }
                     request.send();
                 }
-            })
+            });
+            $("#node-config-input-td").typedInput({
+                default: "json",
+                typeField: $("#node-config-input-tdType"),
+                types: ["json"]
+            });
         },
         oneditsave: function () {
             let node = this;
@@ -49,6 +55,7 @@
     <div class="form-row">
         <label for="node-config-input-td"><i class="fa fa-file-text"></i> TD JSON</label>
         <input type="text" id="node-config-input-td" style="height:200px">
+        <input tyoe="hidden", id="node-config-input-tdType">
     </div>
     <div class="form-row">
         <p>Fetch TD from URL:</p>

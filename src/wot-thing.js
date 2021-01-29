@@ -8,6 +8,8 @@ const HttpsClientFactory = require("@node-wot/binding-http").HttpsClientFactory;
 const CoapClientFactory = require("@node-wot/binding-coap").CoapClientFactory;
 const CoapsClientFactory = require("@node-wot/binding-coap").CoapsClientFactory;
 const MqttClientFactory = require("@node-wot/binding-mqtt").MqttClientFactory;
+const OpcuaClientFactory = require("@node-wot/binding-opcua").OpcuaClientFactory;
+const ModbusClientFactory = require("@node-wot/binding-modbus").ModbusClientFactory;
 
 module.exports = function(RED) {
     function consumedThingNode(config) {
@@ -29,6 +31,12 @@ module.exports = function(RED) {
             }
             if (config.mqtt) {
                 servient.addClientFactory(new MqttClientFactory());
+            }
+            if (config.opcua) {
+                servient.addClientFactory(new OpcuaClientFactory());
+            }
+            if (config.modbus) {
+                servient.addClientFactory(new ModbusClientFactory());
             }
 
             servient.start().then((thingFactory) => {

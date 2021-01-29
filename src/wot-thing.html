@@ -1,4 +1,42 @@
 <script type="text/javascript">
+
+    // List of supported protocols
+    // Secure ones (like https) are automatically inferred
+    const PROTOCOLS = ["http", "coap", "mqtt", "opcua", "modbus"];
+
+    function checkBinding(td_str, binding) {
+        try {
+            var td = JSON.parse(td_str);
+        } catch (err) {
+            return false;
+        }
+        const affordances = ["properties", "actions", "events"];
+        // In case of OPC UA we look for opc.tcp in href not opcua
+        binding = (binding === "opcua")? "opc.tcp" : binding;
+        // Also different for Modbus
+        binding = (binding === "modbus")? "modbus+tcp" : binding;
+        for (const affordance of affordances) {
+            if (td[affordance]) {
+                // item is either a property or an action or an event
+                for (const item of Object.values(td[affordance])) {
+                    if (item.forms) {
+                        let check = item.forms.some(form => {
+                            const parsed = new URL(form.href);
+                            if (parsed.protocol !== null) {
+                                // remove trailing ':'
+                                const scheme = parsed.protocol.slice(0, -1);
+                                return scheme === binding || scheme === binding + "s";
+                            }
+                        });
+                        if (check)
+                            return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     RED.nodes.registerType("consumed-thing",{
         category: "config",
         defaults: {
@@ -8,14 +46,48 @@
             tdType: {value: "json"},
             http: {value: true},
             coap: {value: false},
-            mqtt: {value: false}
+            mqtt: {value: false},
+            opcua: {value: false},
+            modbus: {value: false}
         },
         label: function() {
-            return this.name||this.td.title||"consumed-thing";
+            if (this.name) return this.name;
+            try {
+                const td = JSON.parse(this.td);
+                return td.title;
+            } catch (err) {
+                return "consumed-thing";
+            }
         },
         oneditprepare: function() { 
             let node = this;
 
+            // Create typed json input from the usual one
+            $("#node-config-input-td").typedInput({
+                type:"json",
+                types:["json"]
+            });
+
+            // Initialize the state of protocol checkboxes
+            node.td = $("#node-config-input-td").typedInput('value');
+            for (const protocol of PROTOCOLS) {
+                // No TD means node has not been yet configured
+                if (!node.td) {
+                    // Uncheck and disable everything
+                    $("#node-config-input-" + protocol).prop("checked", false);
+                    $("#node-config-input-" + protocol).prop("disabled", true);
+                } else {
+                    // If node is already configured
+                    // Check the configured protocols
+                    $("#node-config-input-" + protocol).prop("checked", node[protocol]);
+
+                    // Enable the ones which are contained in the TD
+                    // Node: (disabled, !true) = enabled
+                    $("#node-config-input-" + protocol).prop("disabled", !checkBinding(node.td, protocol));
+                }
+            }
+
+            // Fetch TD from URL on button click
             $("#fetch-button").click(function () {
                 let tdLink = $("#node-config-input-tdLink").val()
                 console.log(tdLink)
@@ -25,29 +97,39 @@
                     request.open("GET", tdLink);
                     request.onload = function() {
                         node.td = request.response;
-                        $("#node-config-input-td").val(request.response);
+                        $("#node-config-input-td").typedInput('value', request.response);
+
+                        // Recheck the state of protocol checkboxes
+                        for (const protocol of PROTOCOLS) {
+
+                            $("#node-config-input-" + protocol).prop("checked", false);
+                            $("#node-config-input-" + protocol).prop("disabled", true);
+
+                            if (checkBinding(node.td, protocol)) {
+                                $("#node-config-input-" + protocol).prop("checked", true);
+                                $("#node-config-input-" + protocol).prop("disabled", false);
+                            }
+                        }
                     }
                     request.send();
                 }
             });
-            $("#node-config-input-td").typedInput({
-                default: "json",
-                typeField: $("#node-config-input-tdType"),
-                types: ["json"]
-            });
-        },
-        oneditsave: function () {
-            let node = this;
-            let tdLink = $("#node-config-input-tdLink").val()
 
-            if (tdLink) {
-                let request = new XMLHttpRequest();
-                request.open("GET", tdLink);
-                request.onload = function() {
-                    node.td = request.response;
+            // Fetch TD from the input field on button click
+            $("#process-button").click(function () {
+                node.td = $("#node-config-input-td").typedInput('value');
+
+                // Recheck the state of protocol checkboxes
+                for (const protocol of PROTOCOLS) {
+                    $("#node-config-input-" + protocol).prop("checked", false);
+                    $("#node-config-input-" + protocol).prop("disabled", true);
+
+                    if (checkBinding(node.td, protocol)) {
+                        $("#node-config-input-" + protocol).prop("checked", true);
+                        $("#node-config-input-" + protocol).prop("disabled", false);
+                    }
                 }
-                request.send();
-            }
+            });
         }
     });
 </script>
@@ -59,8 +141,8 @@
     </div>
     <div class="form-row">
         <label for="node-config-input-td"><i class="fa fa-file-text"></i> TD JSON</label>
-        <input type="text" id="node-config-input-td" style="height:200px">
-        <input tyoe="hidden", id="node-config-input-tdType">
+        <input type="text" id="node-config-input-td" placeholder='{"title":"My-Cool-Thing", ...}' style="width:60%">
+        <button type="button" id="process-button">Process</button>
     </div>
     <div class="form-row">
         <p>Fetch TD from URL:</p>
@@ -74,11 +156,15 @@
         <p>Support the following bindings:</p>
         <div class="form-row">
             <label for="node-config-input-http"> HTTP / HTTPS</label>
-            <input type="checkbox" id="node-config-input-http" checked>
+            <input type="checkbox" id="node-config-input-http">
             <label for="node-config-input-coap"> COAP / COAPS</label>
             <input type="checkbox" id="node-config-input-coap">
             <label for="node-config-input-mqtt"> MQTT</label>
             <input type="checkbox" id="node-config-input-mqtt">
+            <label for="node-config-input-opcua"> OPC UA</label>
+            <input type="checkbox" id="node-config-input-opcua">
+            <label for="node-config-input-modbus"> Modbus</label>
+            <input type="checkbox" id="node-config-input-modbus">
         </div>
     </div>
 </script>

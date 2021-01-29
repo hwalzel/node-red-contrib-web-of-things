@@ -22,46 +22,47 @@ module.exports = function(RED) {
         RED.nodes.getNode(config.thing).consumedThing.then((consumedThing) => {
 		if (config.observe) {
 			const uriVariables = (config.uriVariables)? JSON.parse(config.uriVariables) : undefined;
-                	consumedThing.observeProperty(config.property, {"uriVariables": uriVariables}(resp) => {
-                    		node.send({payload: resp, topic: config.topic}) })
-	                .then( () => {node.status({
-	                        fill:"green",
-	                        shape:"dot",
-	                        text:"connected"
-	                    });
-	                }).catch((err) => {
-	                    node.warn(err);
-	                    node.status({
-	                        fill:"red",
-	                        shape:"ring",
-	                        text: "Response error"
-	                    });
-	                })
+            consumedThing.observeProperty(config.property, (resp) => {
+                node.send({payload: resp, topic: config.topic}) }, {"uriVariables": uriVariables})
+                .then( () => { node.status({
+                    fill:"green",
+                    shape:"dot",
+                    text:"connected"
+                    });
+                })
+                .catch((err) => {
+                    node.warn(err);
+                    node.status({
+                        fill:"red",
+                        shape:"ring",
+                        text: "Response error"
+                    });
+                })
 	   	}
-            	else {
-      			this.interval_id = setInterval(
-		                function readProperty() { 
-		                    const uriVariables = (config.uriVariables)? JSON.parse(config.uriVariables) : undefined;
-		                    consumedThing.readProperty(config.property, {"uriVariables": uriVariables})
-		                        .then((resp) => {
-		                            node.send({payload: resp, topic: config.topic}) 
-		                            node.status({
-		                                fill:"green",
-		                                shape:"dot",
-		                                text:"connected"
-		                            });
-		                        })
-		                        .catch((err) => {
-		                            node.warn(err);
-		                            node.status({
-		                                fill:"red",
-		                                shape:"ring",
-		                                text: "Response error"
-		                            });
-		                        })
-		                    return readProperty;
-		                }(),
-		                config.interval * 1000
+        else {
+            this.interval_id = setInterval(
+                function readProperty() { 
+                    const uriVariables = (config.uriVariables)? JSON.parse(config.uriVariables) : undefined;
+                    consumedThing.readProperty(config.property, {"uriVariables": uriVariables})
+                        .then((resp) => {
+                            node.send({payload: resp, topic: config.topic}) 
+                            node.status({
+                                fill:"green",
+                                shape:"dot",
+                                text:"connected"
+                            });
+                        })
+                        .catch((err) => {
+                            node.warn(err);
+                            node.status({
+                                fill:"red",
+                                shape:"ring",
+                                text: "Response error"
+                            });
+                        })
+                    return readProperty;
+                }(),
+                config.interval * 1000
 			);
 		}
         });
